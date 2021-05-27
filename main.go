@@ -10,17 +10,33 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-func Index(ctx *fasthttp.RequestCtx) {
-	ctx.WriteString("Welcome!")
+type PasswordInput struct {
+	LowerLetters string `json:"lowerLetters"`
+	UpperLetters string `json:"upperLetters"`
+	Symbols      string `json:"symbols"`
+	Digits       string `json:"digits"`
+	Length       int    `json:"length"`
+	NumDigits    int    `json:"numDigits"`
+	NumSymbols   int    `json:"numSymbols"`
+	NoUpper      bool   `json:"noUpper"`
+	AllowRepeat  bool   `json:"allowRepeat"`
 }
 
 func PasswordGenerator(ctx *fasthttp.RequestCtx) {
+	passwordInput := &PasswordInput{}
+	data := ctx.Request.Body()
+	err := json.Unmarshal(data, passwordInput)
+	if err != nil {
+		fmt.Println(err)
+		ctx.Response.SetStatusCode(500)
+		return
+	}
 
 	g, err := password.NewGenerator(&password.GeneratorInput{
-		LowerLetters: "abcde",
-		UpperLetters: "abcde",
-		Symbols:      "!@#$%",
-		Digits:       "01234",
+		LowerLetters: passwordInput.LowerLetters,
+		UpperLetters: passwordInput.UpperLetters,
+		Symbols:      passwordInput.Symbols,
+		Digits:       passwordInput.Digits,
 	})
 	if err != nil {
 		fmt.Println(err)
@@ -36,7 +52,7 @@ func PasswordGenerator(ctx *fasthttp.RequestCtx) {
 	//
 	// The algorithm is fast, but it's not designed to be performant; it favors
 	// entropy over speed. This function is safe for concurrent use.
-	res, err := g.Generate(64, 10, 10, false, true)
+	res, err := g.Generate(passwordInput.Length, passwordInput.NumDigits, passwordInput.NumSymbols, passwordInput.NoUpper, passwordInput.AllowRepeat)
 	if err != nil {
 		fmt.Println(err)
 		ctx.Response.SetStatusCode(500)
@@ -59,6 +75,6 @@ func PasswordGenerator(ctx *fasthttp.RequestCtx) {
 
 func main() {
 	r := router.New()
-	r.GET("/passwords", PasswordGenerator)
+	r.POST("/passwords", PasswordGenerator)
 	log.Fatal(fasthttp.ListenAndServe("localhost:8080", r.Handler))
 }

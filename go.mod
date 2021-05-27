@@ -1,4 +1,4 @@
-module password-manager
+module password-generator
 
 go 1.16
 
